@@ -477,16 +477,15 @@
                 <div class="card-body">
                     <div class="row g-2">
                         <div class="col-md-5">
-                            <input  type="text" class="form-control" placeholder="Product name"
+                            <input  type="text" v-model="name" class="form-control" placeholder="Product name"
                                 autocomplete="off" name="product-amount-field" />
                         </div>
                         <div class="col-md-4">
-                            <input type="number" class="form-control" placeholder="Amount (KES)"
+                            <input type="number" v-model="amount" class="form-control" placeholder="Amount (KES)"
                                 min="0" autocomplete="off" name="product-amount-field" />
                         </div>
                         <div class="col-md-3">
-                            <button class="btn btn-primary w-100">
-                                <span class="spinner-border spinner-border-sm me-1"></span>
+                            <button class="btn btn-primary w-100" @click="addProduct">
                                 Add Product
                             </button>
                         </div>
@@ -509,15 +508,11 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr >
-                                <h1>product data</h1>
-                                <td>
-                                    <!-- Bootstrap opens each modal; @click only sets Vue data -->
-                                    <div class="d-flex action-buttons">
-                                        <button class="btn btn-sm btn-warning" data-bs-toggle="modal"
-                                            data-bs-target="#managerModal">Edit</button>
-                                    </div>
-                                </td>
+                            <tr v-for="(product, index) in products" :key="product.id">  
+                                <td>{{ index + 1 }}</td> 
+                                <td>{{ product.name }}</td>
+                                <td>{{ product.amount.toLocaleString() }}</td> 
+                                <td> {{ formatDate(product.created_at) }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -557,6 +552,41 @@
             },
             methods: {
                 getHeaders() { return { Authorization: `Bearer ${localStorage.getItem("token")}` } },
+                
+                async addProduct(){
+                    this.errorMsg = ""
+                    this.successMsg = ""
+                    if(this.name== ""|| this.amount== ""){
+                        this.errorMsg = "All fields are required"
+                        return
+                    }
+                    try{
+                        await axios.post("http://127.0.0.1:5000/products", {
+                            name: this.name,
+                            amount: parseFloat(this.amount)
+                        }, { headers: this.getHeaders() })
+                        this.successMsg = "Product added successfully"
+                        this.name = ""
+                        this.amount = ""
+                        setTimeout(() => window.location.href="products.html", 1000) 
+                    } catch (error) {
+                        this.errorMsg = "Failed to add product"
+                    }
+                },
+                async getProducts(){
+                    try{
+                        const response = await axios.get( "http://127.0.0.1:5000/products", 
+                        { headers: this.getHeaders() })  
+                        this.products= response.data.data
+                        this.successMsg = "Products fetched successfully"
+                        this.successMsg = ""
+                    } catch (error) {
+                    this.errorMsg=error.response?.data?.error || "Failed to fetch products"
+                    }
+                },
+                formatDate(dt){
+                    return new Date(dt).toLocaleString()
+                },
 
                 initTable() {
                     if ($.fn.DataTable.isDataTable("#productsTable")) $("#productsTable").DataTable().destroy()
@@ -574,7 +604,8 @@
                             $("div.dataTables_filter input").attr("autocomplete", "off")
                         }
                     }))
-                }
+                },
+                logout() { localStorage.removeItem("token"); localStorage.removeItem("user"); window.location.href = "login.html" }
             }
         })
     </script>
